@@ -38,6 +38,8 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    // USE 'setup' ONLY FOR TESTS WITH SHARED AUTHENTICATION
+    { name: "setup", testMatch: "auth.setup.ts" },
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
@@ -45,7 +47,11 @@ export default defineConfig({
 
     {
       name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
+      use: {
+        ...devices["Desktop Firefox"],
+        storageState: ".auth/authorizedUser.json", // USE ONLY FOR TESTS WITH SHARED AUTHENTICATION
+      },
+      dependencies: ["setup"], // USE ONLY FOR TESTS WITH SHARED AUTHENTICATION
     },
 
     {

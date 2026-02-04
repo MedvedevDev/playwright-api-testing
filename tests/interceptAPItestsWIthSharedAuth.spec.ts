@@ -18,14 +18,6 @@ test.beforeEach("mock tags API", async ({ page }) => {
     });
   });
   await page.goto(process.env.BASE_URL!);
-  await page.getByRole("link", { name: "Sign in" }).click();
-  await page
-    .getByRole("textbox", { name: "Email" })
-    .fill(process.env.USER_EMAIL!);
-  await page
-    .getByRole("textbox", { name: "Password" })
-    .fill(process.env.USER_PASSWORD!);
-  await page.getByRole("button").click();
 });
 
 test("mock articles API", async ({ page }) => {

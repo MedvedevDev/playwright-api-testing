@@ -2,7 +2,7 @@ import { request } from "@playwright/test";
 
 export async function getAuthToken(): Promise<string> {
   const context = await request.newContext({
-    baseURL: "https://conduit-api.bondaracademy.com",
+    baseURL: process.env.BASE_API_URL,
   });
 
   const response = await context.post("/api/users/login", {
