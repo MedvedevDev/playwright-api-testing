@@ -1,5 +1,7 @@
 import { test, expect, request } from "@playwright/test";
 import tags from "../test-data/tags.json";
+import { getAuthToken } from "../api/auth.api";
+import { createArticleUI } from "../helpers/createArticleUI.helper";
 
 test.use({
   launchOptions: {
@@ -15,7 +17,6 @@ test.beforeEach("mock tags API", async ({ page }) => {
       body: JSON.stringify(tags),
     });
   });
-
   await page.goto(process.env.BASE_URL!);
   await page.getByRole("link", { name: "Sign in" }).click();
   await page
@@ -40,7 +41,6 @@ test("mock articles API", async ({ page }) => {
       body: JSON.stringify(responseBody),
     });
   });
-
   await page.getByText("Global Feed").click();
 
   // Verify that the article is updated
@@ -52,18 +52,9 @@ test("mock articles API", async ({ page }) => {
   );
 });
 
-test("delete article", async ({ page, request }) => {
-  // Perform login
-  const response = await request.post(
-    `${process.env.BASE_API_URL!}/api/users/login`,
-    {
-      data: { user: { email: "testemail@gaga.ge", password: "testpassword" } },
-    },
-  );
-
-  // Get the auth token from response
-  const responseBody = await response.json();
-  const token = responseBody.user.token;
+test("create article without the UI", async ({ page, request }) => {
+  // Get Auth Token
+  const token = await getAuthToken();
 
   // Create an article
   const createdArticle = await request.post(
@@ -85,11 +76,10 @@ test("delete article", async ({ page, request }) => {
   // Assert that the article is created
   expect(createdArticle.status()).toEqual(201);
 
-  // Delete just created article
+  // Delete just created article with UI
   const articleResponseBody = await createdArticle.json();
   const createdArticleTitle = articleResponseBody.article.title;
   await page.getByText("Global Feed").click();
-
   await page
     .locator("app-article-preview")
     .filter({ hasText: createdArticleTitle })
@@ -102,4 +92,49 @@ test("delete article", async ({ page, request }) => {
   await expect(
     page.locator("app-article-preview h1").first(),
   ).not.toContainText(createdArticleTitle);
+});
+
+test("intercept create article response and delete article without UI", async ({
+  page,
+  request,
+}) => {
+  // Create an article
+  createArticleUI(
+    page,
+    "New Awesome Article",
+    "This is description fot the New Awesome Article",
+    "I like Playwroght  + JavaScript",
+  );
+
+  // Intercept the response
+  const articleResponse = await page.waitForResponse(
+    `${process.env.BASE_API_URL!}/api/articles/`,
+  );
+  const responseBody = await articleResponse.json();
+  const slugId = responseBody.article.slug;
+
+  // Verify that article is created
+  await expect(page.locator(".article-page h1")).toContainText(
+    "New Awesome Article",
+  );
+  // Verify that the new article is presented in Global feed
+  await page.getByText("Home").click();
+  await page.getByText("Global Feed").click();
+  await expect(page.locator("app-article-preview h1").first()).toContainText(
+    "New Awesome Article",
+  );
+
+  // Get Auth Token
+  const token = await getAuthToken();
+  // Delete article via API
+  const deleteArticleResponse = await request.delete(
+    `${process.env.BASE_API_URL!}/api/articles/${slugId}`,
+    {
+      headers: {
+        Authorization: "Token " + token,
+      },
+    },
+  );
+
+  expect(deleteArticleResponse.status()).toEqual(204);
 });
