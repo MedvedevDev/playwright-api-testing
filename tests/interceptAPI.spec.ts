@@ -2,6 +2,7 @@ import { test, expect, request } from "@playwright/test";
 import tags from "../test-data/tags.json";
 import { getAuthToken } from "../api/auth.api";
 import { createArticleUI } from "../helpers/createArticle.helper";
+import { generateTestData } from "../helpers/test-data.helper";
 
 test.use({
   launchOptions: {
@@ -29,12 +30,16 @@ test.beforeEach("mock tags API", async ({ page }) => {
 });
 
 test("mock articles API", async ({ page }) => {
+  // Generate test title and test description
+  const testTitle = generateTestData("title");
+  const testDescription = generateTestData("description");
+
   await page.route("**/api/articles*", async (route) => {
     const response = await route.fetch();
     const responseBody = await response.json(); // array of objects: each object has slug, title, descr, body and etc.
 
-    responseBody.articles[0].title = "NEW TITLE";
-    responseBody.articles[0].description = "LOREM IPSUM LOREM";
+    responseBody.articles[0].title = testTitle;
+    responseBody.articles[0].description = testDescription;
 
     // apply new title and description to the very first atricle at the top
     await route.fulfill({
@@ -45,10 +50,10 @@ test("mock articles API", async ({ page }) => {
 
   // Verify that the article is updated
   await expect(page.locator("app-article-list h1").first()).toContainText(
-    "NEW TITLE",
+    testTitle,
   );
   await expect(page.locator("app-article-list p").first()).toContainText(
-    "LOREM IPSUM LOREM",
+    testDescription,
   );
 });
 
@@ -56,15 +61,20 @@ test("create article without the UI", async ({ page, request }) => {
   // Get Auth Token
   const token = await getAuthToken();
 
+  // Generate test title and test description
+  const testTitle = generateTestData("title");
+  const testDescription = generateTestData("description");
+  const testBody = generateTestData("body");
+
   // Create an article
   const createdArticle = await request.post(
     `${process.env.BASE_API_URL!}/api/articles/`,
     {
       data: {
         article: {
-          title: "from api",
-          description: "from api",
-          body: "fromf api",
+          title: testTitle,
+          description: testDescription,
+          body: testBody,
           tagList: [],
         },
       },
@@ -98,13 +108,13 @@ test("intercept create article response and delete article without UI", async ({
   page,
   request,
 }) => {
+  // Generate test title and test description
+  const testTitle = generateTestData("title");
+  const testDescription = generateTestData("description");
+  const testBody = generateTestData("body");
+
   // Create an article
-  createArticleUI(
-    page,
-    "New Awesome Article",
-    "This is description fot the New Awesome Article",
-    "I like Playwroght  + JavaScript",
-  );
+  createArticleUI(page, testTitle, testDescription, testBody);
 
   // Intercept the response
   const articleResponse = await page.waitForResponse(
@@ -114,14 +124,12 @@ test("intercept create article response and delete article without UI", async ({
   const slugId = responseBody.article.slug;
 
   // Verify that article is created
-  await expect(page.locator(".article-page h1")).toContainText(
-    "New Awesome Article",
-  );
+  await expect(page.locator(".article-page h1")).toContainText(testTitle);
   // Verify that the new article is presented in Global feed
   await page.getByText("Home").click();
   await page.getByText("Global Feed").click();
   await expect(page.locator("app-article-preview h1").first()).toContainText(
-    "New Awesome Article",
+    testTitle,
   );
 
   // Get Auth Token
