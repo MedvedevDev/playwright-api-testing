@@ -20,7 +20,7 @@ test.beforeEach("mock tags API", async ({ page }) => {
   await page.goto(process.env.BASE_URL!);
 });
 
-test("mock articles API", async ({ page }) => {
+test("mock first displaying articles in the list", async ({ page }) => {
   await page.route("**/api/articles*", async (route) => {
     const response = await route.fetch();
     const responseBody = await response.json(); // array of objects: each object has slug, title, descr, body and etc.
@@ -44,7 +44,7 @@ test("mock articles API", async ({ page }) => {
   );
 });
 
-test("create article without the UI", async ({ page, request }) => {
+test("mock article creation", async ({ page, request }) => {
   // Get Auth Token
   const token = await getAuthToken();
 
@@ -86,7 +86,7 @@ test("create article without the UI", async ({ page, request }) => {
   ).not.toContainText(createdArticleTitle);
 });
 
-test("intercept create article response and delete article without UI", async ({
+test("intercept create article response and mock article deletion", async ({
   page,
   request,
 }) => {

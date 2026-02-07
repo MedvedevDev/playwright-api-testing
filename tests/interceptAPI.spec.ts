@@ -29,7 +29,7 @@ test.beforeEach("mock tags API", async ({ page }) => {
   await page.getByRole("button").click();
 });
 
-test("mock articles API", async ({ page }) => {
+test("mock first displaying articles in the list", async ({ page }) => {
   // Generate test title and test description
   const testTitle = generateTestData("title");
   const testDescription = generateTestData("description");
@@ -57,7 +57,7 @@ test("mock articles API", async ({ page }) => {
   );
 });
 
-test("create article without the UI", async ({ page, request }) => {
+test("mock article creation", async ({ page, request }) => {
   // Get Auth Token
   const token = await getAuthToken();
 
@@ -104,7 +104,7 @@ test("create article without the UI", async ({ page, request }) => {
   ).not.toContainText(createdArticleTitle);
 });
 
-test("intercept create article response and delete article without UI", async ({
+test("intercept create article response and mock article deletion", async ({
   page,
   request,
 }) => {
