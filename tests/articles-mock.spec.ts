@@ -1,8 +1,9 @@
 import { test, expect, request } from "@playwright/test";
 import tags from "../test-data/tags.json";
 import { getAuthToken } from "../api/auth.api";
-import { createArticleUI } from "../helpers/create-article.helper";
 import { generateTestData } from "../helpers/test-data.helper";
+import { ArticlePage } from "../page-objects/ArticlePage";
+import { LoginPage } from "../page-objects/LoginPage";
 
 test.use({
   launchOptions: {
@@ -11,6 +12,9 @@ test.use({
 });
 
 test.beforeEach("mock tags API", async ({ page }) => {
+  const loginPage = new LoginPage(page);
+
+  // Intercept route
   await page.route("**/api/tags", async (route) => {
     await route.fulfill({
       status: 200,
@@ -18,15 +22,20 @@ test.beforeEach("mock tags API", async ({ page }) => {
       body: JSON.stringify(tags),
     });
   });
+  // Open home page
   await page.goto(process.env.BASE_URL!);
+
   await page.getByRole("link", { name: "Sign in" }).click();
-  await page
-    .getByRole("textbox", { name: "Email" })
-    .fill(process.env.USER_EMAIL!);
-  await page
-    .getByRole("textbox", { name: "Password" })
-    .fill(process.env.USER_PASSWORD!);
-  await page.getByRole("button").click();
+  await loginPage.login(process.env.USER_EMAIL!, process.env.USER_PASSWORD!);
+  // await page
+  //   .getByRole("textbox", { name: "Email" })
+  //   .fill(process.env.USER_EMAIL!);
+  // await page
+  //   .getByRole("textbox", { name: "Password" })
+  //   .fill(process.env.USER_PASSWORD!);
+  // await page.getByRole("button").click();
+
+  //await expect(page.getByText("New Article", { exact: false })).toBeVisible();
 });
 
 test("mock first displaying articles in the list", async ({ page }) => {
@@ -108,15 +117,19 @@ test("intercept create article response and mock article deletion", async ({
   page,
   request,
 }) => {
-  // Generate test title and test description
+  const articlePage = new ArticlePage(page);
+  const token = await getAuthToken(request);
+
+  // Generate test article data
   const testTitle = generateTestData("title");
   const testDescription = generateTestData("description");
   const testBody = generateTestData("body");
 
-  // Create an article
-  createArticleUI(page, testTitle, testDescription, testBody);
+  await page.getByRole("link", { name: "New Article" }).click();
 
-  // Intercept the response
+  // Create an article
+  articlePage.createNewArticle(testTitle, testDescription, testBody);
+  // Intercept request
   const articleResponse = await page.waitForResponse(
     `${process.env.BASE_API_URL!}/api/articles/`,
   );
@@ -132,8 +145,6 @@ test("intercept create article response and mock article deletion", async ({
     testTitle,
   );
 
-  // Get Auth Token
-  const token = await getAuthToken(request);
   // Delete article via API
   const deleteArticleResponse = await request.delete(
     `${process.env.BASE_API_URL!}/api/articles/${slugId}`,
