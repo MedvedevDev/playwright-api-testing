@@ -28,7 +28,7 @@ setup("create new article", async ({ page, request }) => {
   await page.getByRole("button").click();
 
   // Get Auth Token
-  const token = await getAuthToken();
+  const token = await getAuthToken(request);
   // Generate test title and test description
   const title = generateTestData("title");
   const description = generateTestData("description");

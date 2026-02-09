@@ -6,7 +6,7 @@ import path from "path";
 // runs as a teardown to clean up by removing the created article via API
 setup("delete the article", async ({ request }) => {
   // Get Auth Token
-  const token = await getAuthToken();
+  const token = await getAuthToken(request);
   // Delete article via API
   const articleFilePath = path.join(__dirname, "../.auth/article-details.json");
   const fileData = fs.readFileSync(articleFilePath, "utf-8");

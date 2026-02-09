@@ -59,7 +59,7 @@ test("mock first displaying articles in the list", async ({ page }) => {
 
 test("mock article creation", async ({ page, request }) => {
   // Get Auth Token
-  const token = await getAuthToken();
+  const token = await getAuthToken(request);
 
   // Generate test title and test description
   const testTitle = generateTestData("title");
@@ -133,7 +133,7 @@ test("intercept create article response and mock article deletion", async ({
   );
 
   // Get Auth Token
-  const token = await getAuthToken();
+  const token = await getAuthToken(request);
   // Delete article via API
   const deleteArticleResponse = await request.delete(
     `${process.env.BASE_API_URL!}/api/articles/${slugId}`,

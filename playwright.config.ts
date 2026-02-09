@@ -45,21 +45,21 @@ export default defineConfig({
       //dependencies: ["setup"], // USE ONLY FOR TESTS WITH SHARED AUTHENTICATION
     },
     {
-      name: "articleSetup",
+      name: "article-setup",
       use: { ...devices["Desktop Firefox"] },
-      testMatch: "newArticle.setup.ts",
-      teardown: "deleteArticle",
+      testMatch: "new-article.setup.ts",
+      teardown: "delete-article",
     },
     {
-      name: "deleteArticle",
+      name: "delete-article",
       use: { ...devices["Desktop Firefox"], storageState: ".auth/user.json" },
-      testMatch: "deleteArticle.setup.ts",
+      testMatch: "delete-article.setup.ts",
     },
     {
-      name: "likeCounter",
-      testMatch: "likesCounter.spec.ts",
+      name: "like-counter",
+      testMatch: "likes-counter.spec.ts",
       use: { ...devices["Desktop Firefox"], storageState: ".auth/user.json" },
-      dependencies: ["articleSetup"],
+      dependencies: ["article-setup"],
     },
   ],
 });
