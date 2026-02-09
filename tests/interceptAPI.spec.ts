@@ -1,7 +1,7 @@
 import { test, expect, request } from "@playwright/test";
 import tags from "../test-data/tags.json";
 import { getAuthToken } from "../api/auth.api";
-import { createArticleUI } from "../helpers/createArticle.helper";
+import { createArticleUI } from "../helpers/create-article.helper";
 import { generateTestData } from "../helpers/test-data.helper";
 
 test.use({

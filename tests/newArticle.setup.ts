@@ -3,6 +3,7 @@ import { getAuthToken } from "../api/auth.api";
 import { generateTestData } from "../helpers/test-data.helper";
 import path from "path";
 const authFile = path.join(__dirname, "../.auth/user.json");
+import fs from "fs";
 
 /**
  * The likesCounter test depends on newArticle.setup.ts.
@@ -54,7 +55,9 @@ setup("create new article", async ({ page, request }) => {
   // save slug id from articleResponse body
   const response = await createdArticleResponse.json();
   const slugId = response.article.slug;
-  process.env["SLUGID"] = slugId;
+  const testData = { slugId: slugId };
+  const articleFilePath = path.join(__dirname, "../.auth/article-details.json");
+  fs.writeFileSync(articleFilePath, JSON.stringify(testData));
   // saving auth state
   await page.context().storageState({ path: authFile });
 });
