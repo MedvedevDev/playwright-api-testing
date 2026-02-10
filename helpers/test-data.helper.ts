@@ -11,6 +11,9 @@ export function generateTestData(data: string): string {
     case "title":
       return faker.lorem.sentence(3);
 
+    case "username":
+      return faker.internet.username();
+
     default:
       throw new Error(`Unknown test data type: ${data}`);
   }

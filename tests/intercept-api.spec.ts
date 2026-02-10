@@ -66,7 +66,7 @@ test("mock first displaying articles in the list", async ({ page }) => {
   );
 });
 
-test("mock article creation", async ({ page, request }) => {
+test("mock article creation @smoke @regression", async ({ page, request }) => {
   // Get Auth Token
   const token = await getAuthToken(request);
 
@@ -113,10 +113,7 @@ test("mock article creation", async ({ page, request }) => {
   ).not.toContainText(createdArticleTitle);
 });
 
-test("intercept create article response and mock article deletion", async ({
-  page,
-  request,
-}) => {
+test("mock article deletion  @regression", async ({ page, request }) => {
   const articlePage = new ArticlePage(page);
   const token = await getAuthToken(request);
 
@@ -156,4 +153,110 @@ test("intercept create article response and mock article deletion", async ({
   );
 
   expect(deleteArticleResponse.status()).toEqual(204);
+});
+
+test("mock update article @regression", async ({ page, request }) => {
+  const articlePage = new ArticlePage(page);
+  const token = await getAuthToken(request);
+
+  // Generate test article data
+  const testTitle = generateTestData("title");
+  const testDescription = generateTestData("description");
+  const testBody = generateTestData("body");
+
+  await page.getByRole("link", { name: "New Article" }).click();
+
+  // Create an article
+  articlePage.createNewArticle(testTitle, testDescription, testBody);
+  // Intercept request
+  const articleResponse = await page.waitForResponse(
+    `${process.env.BASE_API_URL!}/api/articles/`,
+  );
+  const responseBody = await articleResponse.json();
+  const slugId = responseBody.article.slug;
+
+  // Verify that article is created
+  await expect(page.locator(".article-page h1")).toContainText(testTitle);
+  // Verify that the new article is presented in Global feed
+  await page.getByText("Home").click();
+  await page.getByText("Global Feed").click();
+  await expect(page.locator("app-article-preview h1").first()).toContainText(
+    testTitle,
+  );
+
+  // Update article via API
+  const updateArticleResponse = await request.put(
+    `${process.env.BASE_API_URL!}/api/articles/${slugId}`,
+    {
+      data: {
+        article: {
+          title: testTitle + " updated",
+          description: testDescription + " updated",
+          body: testBody + " updated",
+          tagList: [],
+        },
+      },
+      headers: {
+        Authorization: "Token " + token,
+      },
+    },
+  );
+
+  expect(updateArticleResponse.status()).toEqual(200);
+
+  // Verify that article data is updated on Backend and UI
+  await page.reload();
+  // Intercept request
+  const allArticlesResponse = await page.waitForResponse("**/api/articles*");
+  const allArticlesResponseBody = await allArticlesResponse.json();
+  expect(allArticlesResponseBody.articles[0].title).toBe(
+    testTitle + " updated",
+  );
+  expect(allArticlesResponseBody.articles[0].description).toBe(
+    testDescription + " updated",
+  );
+  expect(allArticlesResponseBody.articles[0].body).toBe(testBody + " updated");
+  await expect(page.locator("app-article-preview h1").first()).toContainText(
+    testTitle + " updated",
+  );
+});
+
+test("mock update user name @smoke @regression", async ({ page, request }) => {
+  const token = await getAuthToken(request);
+  const testUserName = generateTestData("username");
+
+  // Update user via API
+  const updateUsernameResponse = await request.put(
+    `${process.env.BASE_API_URL!}/api/user`,
+    {
+      data: {
+        user: {
+          username: testUserName,
+        },
+      },
+      headers: {
+        Authorization: "Token " + token,
+      },
+    },
+  );
+
+  expect(updateUsernameResponse.status()).toEqual(200);
+
+  // Perform a full contract check to ensure all user fields are returned correctly
+  const body = await updateUsernameResponse.json();
+  expect(body.user).toMatchObject({
+    id: expect.any(Number),
+    email: expect.stringContaining("@"),
+    username: expect.any(String),
+    bio: expect.any(String),
+    image: expect.any(String),
+    token: expect.any(String),
+  });
+
+  expect(body.user.username).toBe(testUserName);
+
+  // Verify that the new username is displayed on UI
+  await page.reload();
+  const headerProfileLink = page.getByRole("link", { name: testUserName });
+  await expect(headerProfileLink).toBeVisible();
 });
