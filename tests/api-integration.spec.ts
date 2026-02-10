@@ -11,10 +11,16 @@ test.use({
   },
 });
 
-test.beforeEach("mock tags API", async ({ page }) => {
+test.beforeEach("Login to application", async ({ page }) => {
   const loginPage = new LoginPage(page);
+  // Open home page
+  await page.goto(process.env.BASE_URL!);
+  await page.getByRole("link", { name: "Sign in" }).click();
+  await loginPage.login(process.env.USER_EMAIL!, process.env.USER_PASSWORD!);
+});
 
-  // Intercept route
+test("mock tags array on the main page @regression", async ({ page }) => {
+  // 1. Устанавливаем перехват (Mock/Stub) ПЕРЕД переходом на вкладку или релоадом
   await page.route("**/api/tags", async (route) => {
     await route.fulfill({
       status: 200,
@@ -22,20 +28,13 @@ test.beforeEach("mock tags API", async ({ page }) => {
       body: JSON.stringify(tags),
     });
   });
-  // Open home page
-  await page.goto(process.env.BASE_URL!);
 
-  await page.getByRole("link", { name: "Sign in" }).click();
-  await loginPage.login(process.env.USER_EMAIL!, process.env.USER_PASSWORD!);
-  // await page
-  //   .getByRole("textbox", { name: "Email" })
-  //   .fill(process.env.USER_EMAIL!);
-  // await page
-  //   .getByRole("textbox", { name: "Password" })
-  //   .fill(process.env.USER_PASSWORD!);
-  // await page.getByRole("button").click();
+  // Trigger the mock
+  await page.reload();
 
-  //await expect(page.getByText("New Article", { exact: false })).toBeVisible();
+  // Verify that UI container mocked tags
+  const tagList = page.locator(".tag-list");
+  await expect(tagList).toContainText(tags.tags[0]);
 });
 
 test("mock first displaying articles in the list", async ({ page }) => {
@@ -66,7 +65,10 @@ test("mock first displaying articles in the list", async ({ page }) => {
   );
 });
 
-test("mock article creation @smoke @regression", async ({ page, request }) => {
+test("create article via API and verify on UI @smoke @regression", async ({
+  page,
+  request,
+}) => {
   // Get Auth Token
   const token = await getAuthToken(request);
 
@@ -76,7 +78,7 @@ test("mock article creation @smoke @regression", async ({ page, request }) => {
   const testBody = generateTestData("body");
 
   // Create an article
-  const createdArticle = await request.post(
+  const createdArticleResponse = await request.post(
     `${process.env.BASE_API_URL!}/api/articles/`,
     {
       data: {
@@ -92,16 +94,28 @@ test("mock article creation @smoke @regression", async ({ page, request }) => {
       },
     },
   );
-  // Assert that the article is created
-  expect(createdArticle.status()).toEqual(201);
+  expect(createdArticleResponse.status()).toEqual(201);
+
+  // Perform a full contract check to ensure all user fields are returned correctly
+  const articleResponseBody = await createdArticleResponse.json();
+  expect(articleResponseBody.article).toMatchObject({
+    title: testTitle,
+    description: testDescription,
+    body: testBody,
+    slug: expect.any(String),
+    tagList: expect.any(Array),
+    createdAt: expect.any(String),
+    updatedAt: expect.any(String),
+    favorited: expect.any(Boolean),
+    favoritesCount: expect.any(Number),
+    author: expect.any(Object),
+  });
 
   // Delete just created article with UI
-  const articleResponseBody = await createdArticle.json();
-  const createdArticleTitle = articleResponseBody.article.title;
   await page.getByText("Global Feed").click();
   await page
     .locator("app-article-preview")
-    .filter({ hasText: createdArticleTitle })
+    .filter({ hasText: testTitle })
     .locator("h1")
     .click();
   await page.getByRole("button", { name: "Delete Article" }).first().click();
@@ -110,10 +124,13 @@ test("mock article creation @smoke @regression", async ({ page, request }) => {
   await page.getByText("Global Feed").click();
   await expect(
     page.locator("app-article-preview h1").first(),
-  ).not.toContainText(createdArticleTitle);
+  ).not.toContainText(testTitle);
 });
 
-test("mock article deletion  @regression", async ({ page, request }) => {
+test("delete article via API and verify UI removal  @regression", async ({
+  page,
+  request,
+}) => {
   const articlePage = new ArticlePage(page);
   const token = await getAuthToken(request);
 
@@ -151,11 +168,13 @@ test("mock article deletion  @regression", async ({ page, request }) => {
       },
     },
   );
-
   expect(deleteArticleResponse.status()).toEqual(204);
 });
 
-test("mock update article @regression", async ({ page, request }) => {
+test("update article via API and verify data integrity @regression", async ({
+  page,
+  request,
+}) => {
   const articlePage = new ArticlePage(page);
   const token = await getAuthToken(request);
 
@@ -204,6 +223,20 @@ test("mock update article @regression", async ({ page, request }) => {
 
   expect(updateArticleResponse.status()).toEqual(200);
 
+  // Perform a full contract check to ensure all user fields are returned correctly
+  const body = await updateArticleResponse.json();
+  expect(body.article).toMatchObject({
+    title: testTitle + " updated",
+    description: testDescription + " updated",
+    body: testBody + " updated",
+    tagList: expect.any(Array),
+    createdAt: expect.any(String),
+    updatedAt: expect.any(String),
+    favorited: expect.any(Boolean),
+    favoritesCount: expect.any(Number),
+    author: expect.any(Object),
+  });
+
   // Verify that article data is updated on Backend and UI
   await page.reload();
   // Intercept request
@@ -221,7 +254,10 @@ test("mock update article @regression", async ({ page, request }) => {
   );
 });
 
-test("mock update user name @smoke @regression", async ({ page, request }) => {
+test("update username via API and verify header UI @smoke @regression", async ({
+  page,
+  request,
+}) => {
   const token = await getAuthToken(request);
   const testUserName = generateTestData("username");
 
@@ -239,7 +275,6 @@ test("mock update user name @smoke @regression", async ({ page, request }) => {
       },
     },
   );
-
   expect(updateUsernameResponse.status()).toEqual(200);
 
   // Perform a full contract check to ensure all user fields are returned correctly
