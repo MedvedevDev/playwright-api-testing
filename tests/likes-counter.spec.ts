@@ -10,7 +10,7 @@ import { expect, test } from "@playwright/test";
  *
  * Finally, deleteArticle.setup.ts runs as a teardown to clean up by removing the created article via API.
  */
-test("like counter increase @smoke", async ({ page }) => {
+test("like counter increase @regression", async ({ page }) => {
   await page.goto(process.env.BASE_URL!);
   await page.getByText("Global Feed").click();
   const firstLikeButton = page
