@@ -302,10 +302,72 @@ test.describe("API Integration & Hybrid Tests", () => {
       const headerProfileLink = page.getByRole("link", { name: testUserName });
       await expect(headerProfileLink).toBeVisible();
     });
+
+    test("add to favourites vis API and verify status", async ({
+      page,
+      request,
+    }) => {
+      const articlePage = new ArticlePage(page);
+      const token = await getAuthToken(request);
+
+      // Generate test article data
+      const testTitle = generateTestData("title");
+      const testDescription = generateTestData("description");
+      const testBody = generateTestData("body");
+
+      await page.getByRole("link", { name: "New Article" }).click();
+
+      // Create an article
+      articlePage.createNewArticle(testTitle, testDescription, testBody);
+      // Intercept request
+      const articleResponse = await page.waitForResponse(
+        `${process.env.BASE_API_URL!}/api/articles/`,
+      );
+      const responseBody = await articleResponse.json();
+      const slugId = responseBody.article.slug;
+
+      // Verify that article is created
+      await expect(page.locator(".article-page h1")).toContainText(testTitle);
+
+      // Add to favourites
+      const addArticleToFavsResponse = await request.post(
+        `${process.env.BASE_API_URL!}/api/articles/${slugId}/favorite`,
+        {
+          headers: {
+            Authorization: "Token " + token,
+          },
+        },
+      );
+      expect(addArticleToFavsResponse.status()).toEqual(200);
+
+      // Perform a full contract check to ensure all user fields are returned correctly
+      const body = await addArticleToFavsResponse.json();
+      expect(body.article).toMatchObject({
+        author: expect.any(Object),
+        body: expect.any(String),
+        createdAt: expect.any(String),
+        description: expect.any(String),
+        favorited: true,
+        favoritesCount: 1,
+        id: expect.any(Number),
+        slug: expect.any(String),
+        tagList: expect.any(Array),
+        title: expect.any(String),
+        updatedAt: expect.any(String),
+      });
+
+      // Verify that favourite status for particular article is updated  on UI
+      await page.getByText("Home").click();
+      const firstLikeButton = page
+        .locator("app-article-preview")
+        .first()
+        .locator("button");
+      await expect(firstLikeButton).toHaveText("1");
+    });
   });
 
   test.describe("Negative & Edge Case Scenarios", () => {
-    test("UI shoud show loading state when tags API fails with 500 @negative", async ({
+    test("UI shoud show loading state when tags API fails with 500 @negative @regression", async ({
       page,
     }) => {
       await page.route("**/api/tags", async (route) => {
@@ -320,7 +382,7 @@ test.describe("API Integration & Hybrid Tests", () => {
       await expect(page.getByText("Loading tags...")).toBeVisible();
     });
 
-    test("should handle network failure for tags API via abort @negative", async ({
+    test("should handle network failure for tags API via abort @negative @regression", async ({
       page,
     }) => {
       await page.route("**/api/tags", (route) =>
@@ -332,7 +394,7 @@ test.describe("API Integration & Hybrid Tests", () => {
       await expect(page.getByText("Loading tags...")).toBeVisible();
     });
 
-    test("should show UI state when articles API fails with 500 @negative", async ({
+    test("should show UI state when articles API fails with 500 @negative @regression", async ({
       page,
     }) => {
       await page.route("**/api/articles*", async (route) => {
