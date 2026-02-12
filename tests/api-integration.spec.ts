@@ -303,7 +303,7 @@ test.describe("API Integration & Hybrid Tests", () => {
       await expect(headerProfileLink).toBeVisible();
     });
 
-    test("add to favourites vis API and verify status", async ({
+    test("add to favourites via API and verify status @regression", async ({
       page,
       request,
     }) => {
@@ -363,6 +363,74 @@ test.describe("API Integration & Hybrid Tests", () => {
         .first()
         .locator("button");
       await expect(firstLikeButton).toHaveText("1");
+    });
+
+    test("remove from favourites via API and verify status @regression", async ({
+      page,
+      request,
+    }) => {
+      const articlePage = new ArticlePage(page);
+      const token = await getAuthToken(request);
+
+      // Generate test article data
+      const testTitle = generateTestData("title");
+      const testDescription = generateTestData("description");
+      const testBody = generateTestData("body");
+
+      await page.getByRole("link", { name: "New Article" }).click();
+
+      // Create an article
+      articlePage.createNewArticle(testTitle, testDescription, testBody);
+      // Intercept request
+      const articleResponse = await page.waitForResponse(
+        `${process.env.BASE_API_URL!}/api/articles/`,
+      );
+      const responseBody = await articleResponse.json();
+      const slugId = responseBody.article.slug;
+
+      // Verify that article is created
+      await expect(page.locator(".article-page h1")).toContainText(testTitle);
+
+      // Add current article to favourites
+      await page.getByText("Home").click();
+      const firstLikeButton = page
+        .locator("app-article-preview")
+        .first()
+        .locator("button");
+      await firstLikeButton.click();
+      // Wait for the UI to show that the current article is favourited
+      await expect(firstLikeButton).toContainText("1");
+
+      // Remove from  favourites
+      const addArticleToFavsResponse = await request.delete(
+        `${process.env.BASE_API_URL!}/api/articles/${slugId}/favorite`,
+        {
+          headers: {
+            Authorization: "Token " + token,
+          },
+        },
+      );
+      expect(addArticleToFavsResponse.status()).toEqual(200);
+
+      // Perform a full contract check to ensure all user fields are returned correctly
+      const body = await addArticleToFavsResponse.json();
+      expect(body.article).toMatchObject({
+        author: expect.any(Object),
+        body: expect.any(String),
+        createdAt: expect.any(String),
+        description: expect.any(String),
+        favorited: false,
+        favoritesCount: 0,
+        id: expect.any(Number),
+        slug: expect.any(String),
+        tagList: expect.any(Array),
+        title: expect.any(String),
+        updatedAt: expect.any(String),
+      });
+
+      // Verify that favourite status for particular article is updated  on UI
+      await page.getByText("Global Feed").click();
+      await expect(firstLikeButton).toHaveText("0");
     });
   });
 

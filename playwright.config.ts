@@ -29,7 +29,7 @@ export default defineConfig({
   reporter: "html",
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    trace: "on-first-retry",
+    trace: "retain-on-failure",
     actionTimeout: 5000,
     navigationTimeout: 10000,
     screenshot: "only-on-failure",
@@ -38,9 +38,9 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: [
     {
-      name: "main-tests-firefox", // Твои основные тесты, включая articles-mock
+      name: "main-tests-firefox",
       use: { ...devices["Desktop Firefox"] },
-      testIgnore: "likes-counter.spec.ts", // Игнорируем здесь зависимый тест
+      testIgnore: "likes-counter.spec.ts",
     },
     {
       name: "article-setup",
